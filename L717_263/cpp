@@ -1,0 +1,166 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cassert>
+using namespace std;
+
+//Состояния вершин
+enum State {
+    UNDISCOVERED,
+    DISCOVERED,
+    PROCESSED
+};
+//Параметры вершины
+struct VertexData {
+    State state = UNDISCOVERED;
+    int entry = 0;  //Время входа
+    int exit = 0;    //Время выхода
+    int parent = -1; //Родитель в DFS-дереве
+};
+//Рекурсивная функция DFS
+void DFS(const vector<vector<int>>& graph, int u, vector<VertexData>& data, int& time) {
+    data[u].state = DISCOVERED;
+   //Обработка вершины и вывод ее номера
+    cout << "Обрабатывается вершина: " << u << endl;
+    time++;
+    data[u].entry = time;
+    //Обход смежных вершин
+    for (int v : graph[u]) {
+        //Обработка ребра и его вывод 
+        cout << "  Проверка ребра (" << u << " -> " << v << ")" << endl;
+      if (data[v].state == UNDISCOVERED) {
+            data[v].parent = u;
+            DFS(graph, v, data, time);
+        } else if (data[v].state == DISCOVERED && v != data[u].parent) {
+            //Если обнаружено обратное ребро значит это цикл
+            cout << "  Найдено обратное ребро (" << u << " -> " << v << ")" << endl;
+        }
+    }
+    data[u].state = PROCESSED;
+    time++;
+    data[u].exit = time;
+}
+//DFS для несвязных графов
+void DFSInit(const vector<vector<int>>& graph, int start = 0) {
+    int n = graph.size();
+    vector<VertexData> data(n);
+    int time = 0;  //Время начинается с 0
+    cout << "Запуск DFS из вершины " << start << ":\n";
+    DFS(graph, start, data, time);
+    //Проверяем все вершины на несвязноый граф
+    for (int i = 0; i < n; ++i) {
+        if (data[i].state == UNDISCOVERED) {
+            cout << "\n Обнаружена компонента связности. Запуск DFS из вершины " << i << ":\n";
+            DFS(graph, i, data, time);
+        }
+    }
+    //Результат
+    cout << "\n\n Результаты обхода:\n";
+    cout << "Вершина | Состояние  | Вход | Выход | Родитель\n";
+    for (int i = 0; i < n; ++i) {
+        string stateStr;
+        switch(data[i].state) {
+            case UNDISCOVERED: stateStr = "Не посещена"; break;
+            case DISCOVERED: stateStr = "Открыта"; break;
+            case PROCESSED: stateStr = "Обработана"; break;
+        }
+        cout << "   " << i << " | ";
+        cout.width(12); cout << left << stateStr << " | ";
+        cout.width(4); cout << data[i].entry << " | ";
+        cout.width(5); cout << data[i].exit << " | ";
+        if (data[i].parent == -1) {
+            cout << "Корень (нет)";
+        } else {
+            cout << data[i].parent;
+        }
+        cout << endl;
+    }
+}
+// Тecты
+void test1_SingleVertex() {
+    cout << "\n Тест 1: Одна вершина\n";
+    vector<vector<int>> graph = {{}};  //Вершина 0 без соседей
+    int n = graph.size();
+    vector<VertexData> data(n);
+    int time = 0;
+    cout << "Запуск DFS из вершины 0:\n";
+    DFS(graph, 0, data, time);
+    //Проверки
+    assert(data[0].state == PROCESSED);
+    assert(data[0].parent == -1); //Корневая вершина
+    assert(data[0].entry == 1);   //Время входа=1
+    assert(data[0].exit == 2);    //Время выхода=2
+    cout << "\n Проверки пройдены\n";
+    cout << " Тест 1 пройден Вершина обработана правильно\n";
+}
+void test2_SimpleLine() {
+    cout << "\n Тест 2: Простая цепочка (0-1-2)\n";
+    vector<vector<int>> graph = {
+        {1},     // 0
+        {0, 2},  // 1
+        {1}      // 2
+    };
+    int n = graph.size();
+    vector<VertexData> data(n);
+    int time = 0;
+    cout << "Запуск DFS из вершины 0:\n";
+    DFS(graph, 0, data, time);
+    //Проверки
+    assert(data[0].state == PROCESSED);
+    assert(data[1].state == PROCESSED);
+    assert(data[2].state == PROCESSED);
+    assert(data[0].parent == -1); //0-корень
+    assert(data[1].parent == 0);  //1 вышел из 0
+    assert(data[2].parent == 1);  //2 вышел из 1
+    //Проверка временных меток
+    //Время входа увеличивается когда идем вниз
+    assert(data[0].entry < data[1].entry);
+    assert(data[1].entry < data[2].entry);
+    //Время выхода увеличивается когда идем вверх
+    assert(data[2].exit < data[1].exit);
+    assert(data[1].exit < data[0].exit);
+    //Для каждой вершины время выхода больше времени входа
+    assert(data[0].exit > data[0].entry);
+    assert(data[1].exit > data[1].entry);
+    assert(data[2].exit > data[2].entry);
+    cout << "\nПроверки пройдены\n";
+    cout << " Тест 2 пройден Цепочка обработана правильно\n";
+}
+void runTests() {
+    cout << "Запуск тестов \n";
+    test1_SingleVertex();
+    test2_SimpleLine();
+    cout << "Тесты пройдены!\n";
+}
+int main() {
+    int choice;
+    cout << "Выбор режима:\n";
+    cout << "1-Запуск тестов\n";
+    cout << "2-Пример\n";
+    cout << "Другое: ";
+    cin >> choice;
+   if (choice == 1) {
+        runTests();
+    } else {
+        //Пример графа (список смежности)
+        vector<vector<int>> graph = {
+            {1, 2, 3}, //Вершина 0
+            {0, 3},    // 1
+            {0, 3},    // 2
+            {0, 1, 2}  // 3
+        };
+        cout << "\nГраф (список смежности):\n";
+        for (int i = 0; i < graph.size(); ++i) {
+            cout << i << ": ";
+            for (int neighbor : graph[i]) {
+                cout << neighbor << " ";
+            }
+            cout << endl;
+        }
+        cout << endl;
+
+        DFSInit(graph, 0);  //Запуск DFS из вершины 0
+    }
+
+    return 0;
+}
